@@ -27,24 +27,12 @@ if not all([AWS_REGION, SQS_QUEUE_URL, DYNAMODB_TABLE_NAME]):
     sys.exit(1)
 
 # --- Clientes Boto3 ---
-# ADICIONADO: overrides opcionais de endpoint_url, para uso com emuladores
-# locais (ex: DynamoDB Local em docker-compose). O boto3==1.26.50 fixado no
-# requirements.txt é anterior ao suporte nativo a AWS_ENDPOINT_URL_DYNAMODB
-# via variável de ambiente (chegou ao SDK ~mid-2023), então isso precisa ser
-# passado explicitamente ao client(). Quando as variáveis não são definidas,
-# o comportamento é idêntico ao original (endpoint real da AWS).
-SQS_ENDPOINT_URL = os.getenv("AWS_SQS_ENDPOINT_URL") or None
-DYNAMODB_ENDPOINT_URL = os.getenv("AWS_DYNAMODB_ENDPOINT_URL") or None
-
 # Criamos a sessão uma vez
 try:
     session = boto3.Session(region_name=AWS_REGION)
-    sqs_client = session.client("sqs", endpoint_url=SQS_ENDPOINT_URL)
-    dynamodb_client = session.client("dynamodb", endpoint_url=DYNAMODB_ENDPOINT_URL)
-    log.info(
-        f"Clientes Boto3 inicializados na região {AWS_REGION} "
-        f"(dynamodb_endpoint={DYNAMODB_ENDPOINT_URL or 'padrão AWS'})"
-    )
+    sqs_client = session.client("sqs")
+    dynamodb_client = session.client("dynamodb")
+    log.info(f"Clientes Boto3 inicializados na região {AWS_REGION}")
 except NoCredentialsError:
     log.critical("Credenciais da AWS não encontradas. Verifique seu ambiente.")
     sys.exit(1)

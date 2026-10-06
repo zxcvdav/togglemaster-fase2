@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"crypto/sha1"
 	"encoding/binary"
 	"encoding/json"
@@ -8,7 +9,6 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
-	"os" // FIX: faltava este import -- os.Getenv("SERVICE_API_KEY") é usado abaixo
 	"sync"
 	"time"
 )
