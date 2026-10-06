@@ -33,7 +33,7 @@ services:
       POSTGRES_DB: flags_db
     volumes:
       - pgdata-flags:/var/lib/postgresql/data
-      - ./db-init/postgres-flags:/docker-entrypoint-initdb.d:ro
+      # - ./db-init/postgres-flags:/docker-entrypoint-initdb.d:ro
     ports:
       - "5434:5432"
     healthcheck:

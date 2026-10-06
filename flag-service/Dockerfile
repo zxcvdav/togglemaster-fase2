@@ -3,29 +3,31 @@
 # --- Estagio 1: Build (dependencias) ---
 FROM python:3.11-slim AS builder
 
-RUN apt-get update && apt-get install -y --no-install-recommends git \
+# Instalar dependências essenciais do sistema (incluindo gcc e libpq-dev para o psycopg2)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /src
 
-# Pinado no commit atual (nao em "main") -- ver nota de reprodutibilidade nos
-# Dockerfiles Go. Para atualizar: troque REPO_REF pelo novo commit.
-ARG REPO_URL=https://github.com/FIAP-TCs/flag-service.git
-ARG REPO_REF=21052b1abcf209ea6848350bdd9928b80b7f86fe
-RUN git clone --depth 1 "$REPO_URL" . \
-    && git fetch --depth 1 origin "$REPO_REF" \
-    && git checkout "$REPO_REF"
-
 RUN python -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
-RUN pip install --no-cache-dir --upgrade pip \
-    && pip install --no-cache-dir -r requirements.txt
+
+RUN pip install --no-cache-dir --upgrade pip
+
+# Copia o requirements.txt da sua máquina local
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copia todo o resto do código da sua pasta local para dentro do container
+COPY . .
 
 # --- Estagio 2: Runtime ---
 FROM python:3.11-slim AS runtime
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends curl \
+    && apt-get install -y --no-install-recommends curl libpq5 \
     && rm -rf /var/lib/apt/lists/* \
     && groupadd -r app && useradd -r -g app app
 

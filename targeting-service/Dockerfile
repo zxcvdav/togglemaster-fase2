@@ -3,29 +3,30 @@
 # --- Estagio 1: Build (dependencias) ---
 FROM python:3.11-slim AS builder
 
-RUN apt-get update && apt-get install -y --no-install-recommends git \
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /src
 
-# Pinado no commit atual (nao em "main") -- ver nota de reprodutibilidade nos
-# Dockerfiles Go. Para atualizar: troque REPO_REF pelo novo commit.
-ARG REPO_URL=https://github.com/FIAP-TCs/targeting-service.git
-ARG REPO_REF=dd9568a583fa409b88a446685779d9e581282fd2
-RUN git clone --depth 1 "$REPO_URL" . \
-    && git fetch --depth 1 origin "$REPO_REF" \
-    && git checkout "$REPO_REF"
-
 RUN python -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
-RUN pip install --no-cache-dir --upgrade pip \
-    && pip install --no-cache-dir -r requirements.txt
+
+RUN pip install --no-cache-dir --upgrade pip
+
+# Copia o requirements.txt da sua máquina local
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copia todo o código local do targeting-service para dentro do container
+COPY . .
 
 # --- Estagio 2: Runtime ---
 FROM python:3.11-slim AS runtime
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends curl \
+    && apt-get install -y --no-install-recommends curl libpq5 \
     && rm -rf /var/lib/apt/lists/* \
     && groupadd -r app && useradd -r -g app app
 
