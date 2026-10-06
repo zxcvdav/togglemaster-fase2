@@ -3,33 +3,38 @@
 # --- Estagio 1: Build (dependencias) ---
 FROM python:3.11-slim AS builder
 
-RUN apt-get update && apt-get install -y --no-install-recommends git \
+# Instalar dependências para compilar pacotes (como psycopg2)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /src
 
-# Pinado no commit atual (nao em "main") -- ver nota de reprodutibilidade nos
-# Dockerfiles Go. Para atualizar: troque REPO_REF pelo novo commit.
-ARG REPO_URL=https://github.com/FIAP-TCs/flag-service.git
-ARG REPO_REF=21052b1abcf209ea6848350bdd9928b80b7f86fe
-RUN git clone --depth 1 "$REPO_URL" . \
-    && git fetch --depth 1 origin "$REPO_REF" \
-    && git checkout "$REPO_REF"
-
+# Criar ambiente virtual
 RUN python -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
-RUN pip install --no-cache-dir --upgrade pip \
-    && pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir --upgrade pip
+
+# Copiar apenas o requirements primeiro (melhora o uso de cache do Docker)
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copiar todo o resto do código da sua máquina para o container
+COPY . .
 
 # --- Estagio 2: Runtime ---
 FROM python:3.11-slim AS runtime
 
+# Instalar curl (para healthcheck) e libpq5 (necessário para o psycopg2 rodar)
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends curl \
+    && apt-get install -y --no-install-recommends curl libpq5 \
     && rm -rf /var/lib/apt/lists/* \
     && groupadd -r app && useradd -r -g app app
 
 WORKDIR /app
+
+# Copiar o ambiente virtual e o código do estágio de build
 COPY --from=builder /opt/venv /opt/venv
 COPY --from=builder /src /app
 
