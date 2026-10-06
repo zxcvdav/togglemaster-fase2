@@ -1,41 +1,61 @@
 # syntax=docker/dockerfile:1
 
-# --- Estagio 1: Build ---
+# --- Build stage ---
 FROM golang:1.21-alpine AS builder
 
+WORKDIR /app
+
+# Instala git para resolução de dependências
 RUN apk add --no-cache git
 
-WORKDIR /src
+# Copia arquivos de dependência
+COPY go.mod go.sum* ./
 
-# Pinado no commit atual do repo (nao em "main") para builds reproduziveis --
-# uma tag movel faria o `docker build` sem --no-cache continuar servindo uma
-# imagem cacheada de uma versao antiga do codigo mesmo que o upstream mude.
-# Para atualizar: troque REPO_REF pelo novo commit apos validar.
-ARG REPO_URL=https://github.com/FIAP-TCs/auth-service.git
-ARG REPO_REF=56e447f83409bf35b22ef04a9e39c2e30df9af33
-RUN git clone --depth 1 "$REPO_URL" . \
-    && git fetch --depth 1 origin "$REPO_REF" \
-    && git checkout "$REPO_REF"
+# Baixa dependências conhecidas
+RUN go mod download
 
-# NOTA: repo original nao tem go.sum commitado -- `go mod tidy` regenera um
-# valido, exigindo rede ate o proxy do Go durante o build (normal).
-RUN go mod tidy && go mod download
+# Copia todo o código-fonte
+COPY . .
 
-RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /out/auth-service .
+# Sincroniza e corrige o go.mod/go.sum
+RUN go mod tidy
 
-# --- Estagio 2: Runtime ---
+# Compila a aplicação gerando o binário
+RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /app/auth-service .
+
+# --- Runtime stage ---
 FROM alpine:3.19 AS runtime
 
-RUN apk add --no-cache ca-certificates wget \
+# Instala certificados, cliente Postgres e wget para o HEALTHCHECK
+# Cria grupo e usuário não-root por segurança
+RUN apk add --no-cache ca-certificates postgresql-client wget \
     && addgroup -S app && adduser -S app -G app
 
 WORKDIR /app
-COPY --from=builder /out/auth-service .
 
+# Copia o binário compilado do estágio builder
+COPY --from=builder /app/auth-service .
+
+# Copia a pasta db/ se ela existir no projeto (o wildcard db* impede o build de falhar se a pasta não existir)
+COPY --chown=app:app db* ./db/
+
+# Define o usuário não-privilegiado
 USER app
-EXPOSE 8001
 
-HEALTHCHECK --interval=10s --timeout=3s --start-period=5s --retries=5 \
-    CMD wget -qO- http://127.0.0.1:8001/health || exit 1
+EXPOSE 8001
+ENV PORT=8001
+
+# Healthcheck usando o wget instalado
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD wget --no-verbose --tries=1 --spider http://localhost:${PORT}/health || exit 1
 
 ENTRYPOINT ["/app/auth-service"]
+
+
+
+
+
+
+
+
+
