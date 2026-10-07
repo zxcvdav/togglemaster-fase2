@@ -33,7 +33,7 @@ services:
       POSTGRES_DB: flags_db
     volumes:
       - pgdata-flags:/var/lib/postgresql/data
-      # - ./db-init/postgres-flags:/docker-entrypoint-initdb.d:ro
+      #- ./db-init/postgres-flags:/docker-entrypoint-initdb.d:ro
     ports:
       - "5434:5432"
     healthcheck:
@@ -154,11 +154,7 @@ services:
         condition: service_healthy
     ports:
       - "8004:8004"
-    healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8004/health"]
-      interval: 10s
-      timeout: 3s
-      retries: 5
+   
 
   analytics-service:
     build:
