@@ -286,6 +286,4 @@ kubectl delete pod load-1 load-2 load-3 -n evaluation
 
 EKS (plano de controle), RDS, ElastiCache e o load balancer cobram por hora enquanto existirem, e o orçamento do Learner Lab é limitado. Para pausar sem apagar, reduza o node group para 0 e pare os RDS. Para encerrar, apague nesta ordem: Ingress e Ingress NGINX (remove o load balancer), node group, cluster, RDS, ElastiCache, tabela DynamoDB, fila SQS, repositórios ECR e, por último, o security group.
 
-## Autores
 
-<!-- Preencha com os nomes do grupo e o link do vídeo/entrega -->
