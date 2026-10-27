@@ -2,3 +2,4 @@ vars.sh
 aws-vars.ps1
 etapa2-anotacoes.txt
 k8s/secrets/
+.env
